@@ -93,10 +93,11 @@ function json(
   });
 }
 
-function isValidEmail(email: unknown): email is string {
+/** Practical contact-form email guard (not full RFC 5322). */
+export function isValidEmail(email: unknown): email is string {
   if (typeof email !== "string") return false;
   const e = email.trim();
-  return e.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+  return e.length > 0 && e.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 }
 
 async function handleHealth(request: Request, env: Env): Promise<Response> {
