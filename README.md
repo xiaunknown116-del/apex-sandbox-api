@@ -1,48 +1,4 @@
-**Complete fix shipped**
-
-**Repo:** https://github.com/xiaunknown116-del/apex-sandbox-api  
-
-```bash
-git clone https://github.com/xiaunknown116-del/apex-sandbox-api.git
-cd apex-sandbox-api
-npm install
-```
-
-### What’s fixed
-
-| Item | Fix |
-|------|-----|
-| **Timing-safe compare** | Fixed 256-byte zero-pad; XOR full buffer; length mixed into accumulator — **no early length return** |
-| **Dead ternary** | Single constant-time loop only |
-| **CORS** | `OPTIONS` → 204; allow-list origins; credentials only when origin matches |
-| **TypeScript** | `Env` interface, typed handlers, `main = src/index.ts` |
-| **Health JSON** | No `mining_pool` / `alpaca_routing` |
-| **Tests** | `tests/timing-safe.test.ts` (equal, mismatch, length, empty) |
-| **Access** | README checklist for `xiaunknown116@gmail.com` include rules |
-
-### Deploy
-
-```bash
-wrangler kv namespace create SANDBOX_KV   # paste id into wrangler.toml
-wrangler secret put ADMIN_TOKEN
-npm run deploy
-```
-
-### Prove wipe gate
-
-```bash
-curl -i -s -X POST https://YOUR_HOST/api/admin/wipe \
-  -H "x-admin-token: wrong"
-# expect: HTTP/… 403
-```
-
-### Access lockout (still on you in the dashboard)
-
-1. Zero Trust → Access → Applications → policy for `apexcapitalweb.com`  
-2. **Include** → `xiaunknown116@gmail.com`  
-3. Save → **incognito** retry  
-
-Worker code is complete on `main`. Access can only be fixed in your Cloudflare account.# apex-sandbox-api
+# apex-sandbox-api
 
 Controlled-sandbox Cloudflare Worker for Apex Capital.
 
