@@ -1,0 +1,27 @@
+{
+  "name": "apex-sandbox-api",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:24",
+  "forwardPorts": [8787],
+  "portsAttributes": {
+    "8787": {
+      "label": "wrangler dev",
+      "onAutoForward": "notify"
+    }
+  },
+  "postCreateCommand": "npm install",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+      }
+    }
+  },
+  "remoteEnv": {
+    "NODE_ENV": "development"
+  }
+}

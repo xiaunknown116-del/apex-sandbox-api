@@ -1,0 +1,127 @@
+**GitHub Actions workflows** for `apex-sandbox-api`
+
+### What’s in the repo
+
+| Workflow | Path | State | Display name |
+|----------|------|--------|--------------|
+| **CI** | `.github/workflows/ci.yml` | Active | `CI` |
+
+Badge: https://github.com/xiaunknown116-del/apex-sandbox-api/workflows/CI/badge.svg  
+
+### Current workflow (PR branch)
+
+```yaml
+name: CI                    # Actions tab label
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:        # manual "Run workflow"
+    inputs:
+      node_version:
+        type: choice
+        default: "24"
+        options: ["22", "24"]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true  # cancel older runs on same branch
+
+jobs:
+  test:
+    name: Test (Node ${{ inputs.node_version || '24' }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node_version || '24' }}
+      - run: npm install
+      - run: npm run typecheck
+      - run: npm test
+```
+
+### Recent runs
+
+| # | Event | Branch | Result |
+|---|--------|--------|--------|
+| 5 | pull_request | `xiaunknown116-del-patch-2` | success |
+| 4 | pull_request | `ci/add-minimal-workflow` | success |
+| 3 | pull_request | `ci/add-minimal-workflow` | success |
+| 2 | pull_request | `ci/add-minimal-workflow` | success |
+| 1 | pull_request | `ci/add-minimal-workflow` | **failure** (old Node 20 + lockfile) |
+
+### Anatomy of a workflow (quick map)
+
+| Piece | Role |
+|-------|------|
+| `name` | Label in the Actions tab |
+| `on` | When it runs (`push`, `pull_request`, `workflow_dispatch`, …) |
+| `concurrency` | Limit parallel runs; cancel superseded ones |
+| `jobs.<id>` | One or more jobs (can use `needs`, matrix, etc.) |
+| `runs-on` | Runner (`ubuntu-latest`, self-hosted, …) |
+| `steps` | Ordered actions / shell commands |
+| `uses:` | Reuse a published action |
+| `run:` | Shell command on the runner |
+
+### Common workflow types you might add later
+
+| Type | Trigger | Purpose |
+|------|---------|---------|
+| **CI** (current) | push / PR | Typecheck + test |
+| **Deploy** | push to `main` or `workflow_dispatch` | `wrangler deploy` with secrets |
+| **Release** | tag / release | Changelog, GitHub Release |
+| **Scheduled** | `schedule:` cron | Nightly health checks |
+| **Reusable** | `workflow_call` | Share jobs across repos |
+
+### Related PRs
+- https://github.com/xiaunknown116-del/apex-sandbox-api/pull/3 — CI + devcontainer  
+- https://github.com/xiaunknown116-del/apex-sandbox-api/pull/4 — README patch (also green CI)
+
+Want to dig into a specific part next (deploy workflow, secrets, matrix, or status checks on PRs)?name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      node_version:
+        description: Node.js version
+        type: choice
+        default: "24"
+        options:
+          - "22"
+          - "24"
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test (Node ${{ inputs.node_version || '24' }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node_version || '24' }}
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
