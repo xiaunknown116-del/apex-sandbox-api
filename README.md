@@ -1,52 +1,12 @@
-**Complete fix shipped**
-
-**Repo:** https://github.com/xiaunknown116-del/apex-sandbox-api  
-
-```bash
-git clone https://github.com/xiaunknown116-del/apex-sandbox-api.git
-cd apex-sandbox-api
-npm install
-```
-
-### What’s fixed
-
-| Item | Fix |
-|------|-----|
-| **Timing-safe compare** | Fixed 256-byte zero-pad; XOR full buffer; length mixed into accumulator — **no early length return** |
-| **Dead ternary** | Single constant-time loop only |
-| **CORS** | `OPTIONS` → 204; allow-list origins; credentials only when origin matches |
-| **TypeScript** | `Env` interface, typed handlers, `main = src/index.ts` |
-| **Health JSON** | No `mining_pool` / `alpaca_routing` |
-| **Tests** | `tests/timing-safe.test.ts` (equal, mismatch, length, empty) |
-| **Access** | README checklist for `xiaunknown116@gmail.com` include rules |
-
-### Deploy
-
-```bash
-wrangler kv namespace create SANDBOX_KV   # paste id into wrangler.toml
-wrangler secret put ADMIN_TOKEN
-npm run deploy
-```
-
-### Prove wipe gate
-
-```bash
-curl -i -s -X POST https://YOUR_HOST/api/admin/wipe \
-  -H "x-admin-token: wrong"
-# expect: HTTP/… 403
-```
-
-### Access lockout (still on you in the dashboard)
-
-1. Zero Trust → Access → Applications → policy for `apexcapitalweb.com`  
-2. **Include** → `xiaunknown116@gmail.com`  
-3. Save → **incognito** retry  
-
-Worker code is complete on `main`. Access can only be fixed in your Cloudflare account.# apex-sandbox-api
+# apex-sandbox-api
 
 Controlled-sandbox Cloudflare Worker for Apex Capital.
 
 **Not production brokerage.** No client money, no custody, no live trading.
+
+**Repo:** https://github.com/xiaunknown116-del/apex-sandbox-api
+
+---
 
 ## Features
 
@@ -57,24 +17,108 @@ Controlled-sandbox Cloudflare Worker for Apex Capital.
 | `POST /api/admin/wipe` | Timing-safe `x-admin-token`; sets sandbox wipe flag only |
 | `OPTIONS *` | CORS preflight for allow-listed origins |
 
-### Security fixes (complete)
+### Security posture
 
-- **Timing-safe compare** — fixed 256-byte padded buffers; length mixed into accumulator (no early return on length mismatch alone before work)
+- **Timing-safe compare** — 256-byte padded buffers; length mixed into accumulator (no early return on length alone)
 - **CORS** — origin allow-list; credentials only when origin matches
 - **TypeScript** — `Env` interface; `main = src/index.ts`
 - **No** `mining_pool` / `alpaca_routing` in health JSON
 
-## Deploy
+---
+
+## Quick start (local)
 
 ```bash
+git clone https://github.com/xiaunknown116-del/apex-sandbox-api.git
+cd apex-sandbox-api
 npm install
+npm run typecheck
+npm test
+npm run dev
+```
+
+---
+
+## One-time Cloudflare setup
+
+```bash
+# 1. Create KV and paste the id into wrangler.toml
 wrangler kv namespace create SANDBOX_KV
-# put id into wrangler.toml
+
+# 2. Set Worker runtime secret (not a GitHub secret)
 wrangler secret put ADMIN_TOKEN
+
+# 3. Deploy from your machine (optional if using GitHub Actions Deploy)
 npm run deploy
 ```
 
-## Verify
+`wrangler.toml` must not keep `REPLACE_WITH_KV_NAMESPACE_ID`.
+
+---
+
+## GitHub Actions
+
+### CI — `.github/workflows/ci.yml`
+
+| Trigger | What runs |
+|---------|-----------|
+| Push / PR → `main` | Install → typecheck → vitest |
+| **workflow_dispatch** | Same; optional Node `22` or `24` |
+
+- Node **24** by default
+- No Cloudflare secrets required
+- Concurrency cancels superseded runs on the same ref
+
+### Deploy — `.github/workflows/deploy.yml`
+
+| Trigger | What runs |
+|---------|-----------|
+| Push → `main` | Typecheck → test → `wrangler deploy` |
+| **workflow_dispatch** | Same (manual production deploy) |
+
+Uses [`cloudflare/wrangler-action@v3`](https://github.com/cloudflare/wrangler-action).
+
+**GitHub → Settings → Secrets and variables → Actions**
+
+| Secret | Required | Purpose |
+|--------|----------|---------|
+| `CLOUDFLARE_API_TOKEN` | Yes | Workers Edit token |
+| `CLOUDFLARE_ACCOUNT_ID` | Recommended | Account scoping |
+
+Optional: repo **Environment** named `production` (reviewers / wait timer).
+
+Deploy does **not** run on pull requests (secrets stay off untrusted code).
+
+### Status checks (branch protection)
+
+**Settings → Rules → Rulesets** (or classic branch protection on `main`):
+
+1. Require pull request before merging  
+2. Require status checks to pass → select **CI** / **Test (Node 24)**  
+3. Optionally require branch up to date  
+
+---
+
+## Codespaces / Dev Container
+
+`.devcontainer/devcontainer.json`
+
+- Image: `mcr.microsoft.com/devcontainers/typescript-node:24`
+- Port **8787** forwarded for `wrangler dev`
+- `postCreateCommand`: `npm install`
+
+**Code → Codespaces → Create codespace**
+
+Wrangler OAuth (`wrangler login`) does not work in Codespaces. Use a token:
+
+```bash
+export CLOUDFLARE_API_TOKEN=your_token
+npx wrangler dev
+```
+
+---
+
+## Verify after deploy
 
 ```bash
 curl -i https://YOUR_HOST/api/health
@@ -88,17 +132,19 @@ curl -i -X POST https://YOUR_HOST/api/admin/wipe \
 # expect HTTP 403
 ```
 
+---
+
 ## Cloudflare Access (lockout checklist)
 
 If `xiaunknown116@gmail.com` cannot reach the site:
 
-1. **Zero Trust → Access → Applications** → open app for `apexcapitalweb.com`
-2. Policy **Include** must contain:
-   - Emails: `xiaunknown116@gmail.com` **or**
-   - IdP group that includes that user
+1. **Zero Trust → Access → Applications** → app for `apexcapitalweb.com`
+2. Policy **Include** must contain that email (or an IdP group that includes it)
 3. **Exclude** must not match that email
-4. Save → try **incognito** (clears Access cookies)
-5. Optional: separate policy so `GET /api/health` is not behind browser login (service token or public bypass for health only)
+4. Save → retry in **incognito**
+5. Optional: bypass Access for `GET /api/health` only (service token or public exception)
+
+---
 
 ## Tests
 
@@ -106,7 +152,25 @@ If `xiaunknown116@gmail.com` cannot reach the site:
 npm test
 ```
 
-Covers `timingSafeEqualString` equal / unequal / length mismatch / empty cases.
+Covers `timingSafeEqualString` (equal / unequal / length mismatch / empty).
+
+---
+
+## Source layout
+
+```
+.devcontainer/devcontainer.json   # Codespaces / VS Code Dev Containers
+.github/workflows/ci.yml          # PR + push CI
+.github/workflows/deploy.yml      # main + manual deploy
+src/index.ts                      # Worker entry
+tests/                            # Vitest
+wrangler.toml                     # Worker name, KV binding, vars
+package.json
+tsconfig.json
+vitest.config.ts
+```
+
+---
 
 ## License
 
