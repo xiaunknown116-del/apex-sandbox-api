@@ -1,4 +1,25 @@
-**Complete fix shipped**
+## Summary
+Adds a minimal, fast GitHub Actions CI workflow for `apex-sandbox-api`.
+
+### What it does
+- Runs on every push and PR targeting `main`
+- Installs dependencies with `npm ci`
+- Runs `npm run typecheck` (TypeScript)
+- Runs `npm test` (Vitest unit tests, including timing-safe compare)
+
+### Design choices (smallest safe improvement)
+- No deploy step — avoids needing Cloudflare secrets in PR CI
+- Node 20 + npm cache for speed
+- 10-minute job timeout
+- Concurrency group cancels superseded runs on the same ref
+
+### Test plan
+- [x] Workflow file added at `.github/workflows/ci.yml`
+- [ ] CI run on this PR should pass (typecheck + vitest)
+- [ ] After merge, pushes to `main` will also run CI
+
+---
+Related: controlled-sandbox Worker for Apex Capital (no client money / no production trading).**Complete fix shipped**
 
 **Repo:** https://github.com/xiaunknown116-del/apex-sandbox-api  
 
