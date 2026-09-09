@@ -1,15 +1,22 @@
 name = "apex-sandbox-api"
 main = "src/index.ts"
-compatibility_date = "2026-09-01"
+compatibility_date = "2026-09-08"
+workers_dev = false
 
-# Create KV in dashboard, then set id:
-# wrangler kv namespace create SANDBOX_KV
+# Custom domain route — requires zone apexcapitalweb.com to be Active
+[[routes]]
+pattern = "apexcapitalweb.com/*"
+zone_name = "apexcapitalweb.com"
+
+# Create KV, then replace id:
+#   wrangler kv namespace create SANDBOX_KV
 [[kv_namespaces]]
 binding = "SANDBOX_KV"
 id = "REPLACE_WITH_KV_NAMESPACE_ID"
 
-# Secret (do not commit):
-# wrangler secret put ADMIN_TOKEN
+# Secrets (do not commit):
+#   wrangler secret put ADMIN_TOKEN
 
 [vars]
+ENVIRONMENT = "production"
 ALLOWED_ORIGINS = "https://apexcapitalweb.com,http://localhost:8787,http://127.0.0.1:8787"
