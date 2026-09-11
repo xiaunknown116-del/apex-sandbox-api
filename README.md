@@ -1,5 +1,55 @@
 **Complete fix shipped**
+**Apex Capital website is complete and running.**
 
+### Local server
+```bash
+cd apex-capital-complete/website
+python3 -m http.server 8080
+```
+→ **http://localhost:8080/**
+
+Status: **200 OK** (server active).
+
+### Completed structure
+```
+apex-capital-complete/website/
+├── index.html              (Overview – hero, posture, segregation)
+├── platform.html           (Architecture & design principles)
+├── portfolio.html          (Illustrative posture only)
+├── governance.html         (Dual-control / 4-eye / break-glass)
+├── security.html           (Control-plane isolation, audit, Zero Trust)
+├── insights.html           (Institutional perspectives)
+├── contact.html            (Form → api.apexcapitalweb.com + Turnstile)
+├── privacy.html
+├── terms.html
+├── admin-login.html        (Staff boundary – no credentials collected)
+├── google_maps_list_explorer.html
+├── assets/
+│   ├── site.css            (Dark institutional theme)
+│   ├── segregation-diagram.svg
+│   ├── control-plane.svg
+│   ├── apex-portfolio-overview.jpg
+│   └── control-plane.jpg
+└── …
+```
+
+### Production references (as provided)
+| Resource | URL |
+|----------|-----|
+| Public site | https://apexcapitalweb.com |
+| Pages preview | https://apex-capital-web.pages.dev |
+| Contact API | https://api.apexcapitalweb.com/api/contact |
+| Bot protection | [Cloudflare Turnstile](https://www.cloudflare.com/products/turnstile/?utm_source=turnstile&utm_campaign=widget) |
+
+The contact form is wired to the production API endpoint and includes a Turnstile placeholder (replace the site key with the live value from the Cloudflare dashboard).
+
+### Next recommended steps
+1. Configure the real Turnstile site key in `contact.html`.
+2. Deploy the `website/` folder to Cloudflare Pages (or Netlify) under `apexcapitalweb.com`.
+3. Protect `/admin-login.html` (and any future admin routes) with Cloudflare Access + MFA.
+4. Keep the control-plane UI and MCP server completely separate from this public static site.
+
+The local server remains available at **http://localhost:8080**.
 **Repo:** https://github.com/xiaunknown116-del/apex-sandbox-api  
 
 ```bash
