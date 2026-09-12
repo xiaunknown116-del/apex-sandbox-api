@@ -12,7 +12,6 @@ import { checkRateLimit, CONTACT_RATE_LIMIT } from "./rate-limit";
 export interface Env {
   RATE_LIMIT_KV: KVNamespace;
   TURNSTILE_SECRET_KEY: string;
-  // optional: NOTIFY_WEBHOOK, D1, etc.
 }
 
 function json(data: unknown, status = 200, extraHeaders: Record<string, string> = {}): Response {
@@ -29,6 +28,7 @@ function json(data: unknown, status = 200, extraHeaders: Record<string, string> 
 }
 
 async function verifyTurnstile(token: string, secret: string, ip: string): Promise<boolean> {
+  if (!secret) return false;
   const body = new URLSearchParams({
     secret,
     response: token,
@@ -67,7 +67,7 @@ export async function handleContact(request: Request, env: Env): Promise<Respons
 
   const contentType = request.headers.get("Content-Type") || "";
   if (contentType.includes("application/json")) {
-    const body = await request.json() as Record<string, string>;
+    const body = (await request.json()) as Record<string, string>;
     name = (body.name || "").trim();
     email = (body.email || "").trim();
     organization = (body.organization || "").trim();
@@ -82,18 +82,16 @@ export async function handleContact(request: Request, env: Env): Promise<Respons
     turnstileToken = String(form.get("cf-turnstile-response") || "").trim();
   }
 
-  // Basic validation
   if (!name || !email || !message) {
     return json({ error: "Name, email and message are required" }, 400);
   }
-  if (!/[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return json({ error: "Invalid email" }, 400);
   }
   if (message.length > 5000) {
     return json({ error: "Message too long" }, 400);
   }
 
-  // 1. Rate limit
   const rl = await checkRateLimit(
     { ...CONTACT_RATE_LIMIT, kv: env.RATE_LIMIT_KV },
     ip,
@@ -115,7 +113,6 @@ export async function handleContact(request: Request, env: Env): Promise<Respons
     );
   }
 
-  // 2. Turnstile
   if (!turnstileToken) {
     return json({ error: "Turnstile token missing" }, 400);
   }
@@ -130,9 +127,7 @@ export async function handleContact(request: Request, env: Env): Promise<Respons
     return json({ error: "Turnstile verification failed" }, 403);
   }
 
-  // 3. Accept inquiry (replace with your storage / notification)
   const inquiryId = crypto.randomUUID();
-  // await env.INQUIRIES.put(inquiryId, JSON.stringify({ name, email, organization, message, ip, at: new Date().toISOString() }));
 
   return json(
     {
