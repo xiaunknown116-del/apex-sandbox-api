@@ -2,20 +2,25 @@ name = "apex-sandbox-api"
 main = "src/index.ts"
 compatibility_date = "2026-09-01"
 
-# KV namespaces (create in dashboard, then set ids):
-# wrangler kv namespace create SANDBOX_KV
-# wrangler kv namespace create RATE_LIMIT_KV
+# KV: create with:
+#   npx wrangler kv namespace create SANDBOX_KV
+#   npx wrangler kv namespace create RATE_LIMIT_KV
+# Then paste the printed ids below. Worker still boots if ids are wrong/missing.
 [[kv_namespaces]]
 binding = "SANDBOX_KV"
-id = "REPLACE_WITH_KV_NAMESPACE_ID"
+id = "00000000000000000000000000000000"
+# preview_id = ""
 
 [[kv_namespaces]]
 binding = "RATE_LIMIT_KV"
-id = "REPLACE_WITH_RATE_LIMIT_KV_ID"
+id = "00000000000000000000000000000000"
+# preview_id = ""
 
-# Secrets (do not commit):
-# wrangler secret put ADMIN_TOKEN
-# wrangler secret put TURNSTILE_SECRET_KEY
+# Secrets (optional for demo — without them demo Turnstile secret is used):
+#   npx wrangler secret put TURNSTILE_SECRET_KEY
+#   npx wrangler secret put ADMIN_TOKEN
 
 [vars]
-ALLOWED_ORIGINS = "https://apexcapitalweb.com,https://apex-capital-web.pages.dev,http://localhost:8787,http://127.0.0.1:8787,http://localhost:8080"
+ALLOWED_ORIGINS = "https://apexcapitalweb.com,https://www.apexcapitalweb.com,https://apex-capital-web.pages.dev,http://localhost:8080,http://localhost:8787,http://127.0.0.1:8787"
+# Set to "false" to refuse contact when TURNSTILE_SECRET_KEY is unset
+ALLOW_DEMO_TURNSTILE = "true"
