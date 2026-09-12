@@ -53,7 +53,7 @@ export function timingSafeEqualString(a: string, b: string): boolean {
 function parseAllowedOrigins(env: Env): string[] {
   const raw =
     env.ALLOWED_ORIGINS ??
-    "https://apexcapitalweb.com,https://apex-capital-web.pages.dev";
+    "https://apexcapitalweb.com,https://apex-capital-web.pages.dev,http://localhost:8080,http://localhost:8787,http://127.0.0.1:8787";
   return raw
     .split(",")
     .map((s) => s.trim())
@@ -161,9 +161,8 @@ export default {
       return handleHealth(request, env);
     }
 
-    // Contact: rate limit + Turnstile (src/contact-handler.ts)
     if (request.method === "POST" && path === "/api/contact") {
-      return handleContactSecure(request, env as any);
+      return handleContactSecure(request, env);
     }
 
     if (request.method === "POST" && path === "/api/admin/wipe") {
