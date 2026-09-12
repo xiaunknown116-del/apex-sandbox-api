@@ -2,22 +2,22 @@
  * Apex Capital — Contact API handler
  * Order of checks:
  *  1. Method + basic input validation
- *  2. Rate limit (IP + email)
+ *  2. Rate limit (IP + email) — skipped safely if RATE_LIMIT_KV missing
  *  3. Turnstile Siteverify
- *  4. Persist inquiry to SANDBOX_KV (sandbox only — no client money)
+ *  4. Persist inquiry to SANDBOX_KV when bound
  */
 
 import { checkRateLimit, CONTACT_RATE_LIMIT } from "./rate-limit";
 
 export interface Env {
-  RATE_LIMIT_KV: KVNamespace;
+  RATE_LIMIT_KV?: KVNamespace;
   SANDBOX_KV?: KVNamespace;
   TURNSTILE_SECRET_KEY: string;
   ALLOWED_ORIGINS?: string;
 }
 
 const DEFAULT_ORIGINS =
-  "https://apexcapitalweb.com,https://apex-capital-web.pages.dev,http://localhost:8080,http://localhost:8787,http://127.0.0.1:8787";
+  "https://apexcapitalweb.com,https://www.apexcapitalweb.com,https://apex-capital-web.pages.dev,http://localhost:8080,http://localhost:8787,http://127.0.0.1:8787";
 
 function parseAllowedOrigins(env: Env): string[] {
   return (env.ALLOWED_ORIGINS ?? DEFAULT_ORIGINS)
@@ -110,21 +110,25 @@ export async function handleContact(
   let message = "";
   let turnstileToken = "";
 
-  const contentType = request.headers.get("Content-Type") || "";
-  if (contentType.includes("application/json")) {
-    const body = (await request.json()) as Record<string, string>;
-    name = (body.name || "").trim();
-    email = (body.email || "").trim();
-    organization = (body.organization || "").trim();
-    message = (body.message || "").trim();
-    turnstileToken = body["cf-turnstile-response"] || body.turnstileToken || "";
-  } else {
-    const form = await request.formData();
-    name = String(form.get("name") || "").trim();
-    email = String(form.get("email") || "").trim();
-    organization = String(form.get("organization") || "").trim();
-    message = String(form.get("message") || "").trim();
-    turnstileToken = String(form.get("cf-turnstile-response") || "").trim();
+  try {
+    const contentType = request.headers.get("Content-Type") || "";
+    if (contentType.includes("application/json")) {
+      const body = (await request.json()) as Record<string, string>;
+      name = (body.name || "").trim();
+      email = (body.email || "").trim();
+      organization = (body.organization || "").trim();
+      message = (body.message || "").trim();
+      turnstileToken = body["cf-turnstile-response"] || body.turnstileToken || "";
+    } else {
+      const form = await request.formData();
+      name = String(form.get("name") || "").trim();
+      email = String(form.get("email") || "").trim();
+      organization = String(form.get("organization") || "").trim();
+      message = String(form.get("message") || "").trim();
+      turnstileToken = String(form.get("cf-turnstile-response") || "").trim();
+    }
+  } catch {
+    return json(request, env, { error: "Invalid request body" }, 400);
   }
 
   if (!name || !email || !message) {
@@ -137,7 +141,6 @@ export async function handleContact(
     return json(request, env, { error: "Message too long" }, 400);
   }
 
-  // 1. Rate limit
   const rl = await checkRateLimit(
     { ...CONTACT_RATE_LIMIT, kv: env.RATE_LIMIT_KV },
     ip,
@@ -161,7 +164,6 @@ export async function handleContact(
     );
   }
 
-  // 2. Turnstile
   if (!turnstileToken) {
     return json(request, env, { error: "Turnstile token missing" }, 400);
   }
@@ -176,7 +178,6 @@ export async function handleContact(
     return json(request, env, { error: "Turnstile verification failed" }, 403);
   }
 
-  // 3. Persist (sandbox only — illustrative inquiries, not client money)
   const inquiryId = crypto.randomUUID();
   const record = {
     id: inquiryId,
@@ -190,9 +191,13 @@ export async function handleContact(
   };
 
   if (env.SANDBOX_KV) {
-    await env.SANDBOX_KV.put(`contact:${inquiryId}`, JSON.stringify(record), {
-      expirationTtl: 60 * 60 * 24 * 30, // 30 days
-    });
+    try {
+      await env.SANDBOX_KV.put(`contact:${inquiryId}`, JSON.stringify(record), {
+        expirationTtl: 60 * 60 * 24 * 30,
+      });
+    } catch {
+      // persist is best-effort; still return success to the client
+    }
   }
 
   return json(
