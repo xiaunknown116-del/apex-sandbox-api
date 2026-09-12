@@ -8,9 +8,13 @@
  * - source label: sandbox-mock
  */
 
+import { handleContact as handleContactSecure } from "./contact-handler";
+
 export interface Env {
   SANDBOX_KV: KVNamespace;
+  RATE_LIMIT_KV: KVNamespace;
   ADMIN_TOKEN: string;
+  TURNSTILE_SECRET_KEY: string;
   ALLOWED_ORIGINS?: string;
 }
 
@@ -24,11 +28,6 @@ const SANDBOX = {
 
 const MAX_TOKEN_COMPARE_BYTES = 256;
 
-/**
- * Timing-safe string equality.
- * - Pads both sides to fixed maxLen with zeros (no early length return that leaks size).
- * - XOR-accumulates all bytes; equal only if result is 0 and original lengths match.
- */
 export function timingSafeEqualString(a: string, b: string): boolean {
   const enc = new TextEncoder();
   const ba = enc.encode(String(a ?? ""));
@@ -47,13 +46,14 @@ export function timingSafeEqualString(a: string, b: string): boolean {
   for (let i = 0; i < maxLen; i++) {
     diff |= pa[i] ^ pb[i];
   }
-  // Fold length inequality without short-circuiting the byte loop above
   diff |= lenA ^ lenB;
   return diff === 0;
 }
 
 function parseAllowedOrigins(env: Env): string[] {
-  const raw = env.ALLOWED_ORIGINS ?? "https://apexcapitalweb.com";
+  const raw =
+    env.ALLOWED_ORIGINS ??
+    "https://apexcapitalweb.com,https://apex-capital-web.pages.dev";
   return raw
     .split(",")
     .map((s) => s.trim())
@@ -93,12 +93,6 @@ function json(
   });
 }
 
-function isValidEmail(email: unknown): email is string {
-  if (typeof email !== "string") return false;
-  const e = email.trim();
-  return e.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
-}
-
 async function handleHealth(request: Request, env: Env): Promise<Response> {
   let kv_storage: "CONNECTED" | "DISCONNECTED" | "ERROR" = "DISCONNECTED";
   try {
@@ -118,43 +112,6 @@ async function handleHealth(request: Request, env: Env): Promise<Response> {
     kv_storage,
     time: new Date().toISOString(),
   });
-}
-
-async function handleContact(request: Request, env: Env): Promise<Response> {
-  let body: { email?: unknown; message?: unknown };
-  try {
-    body = await request.json();
-  } catch {
-    return json(request, env, { error: "Bad Request" }, 400);
-  }
-
-  if (!isValidEmail(body.email)) {
-    return json(request, env, { error: "Bad Request" }, 400);
-  }
-  const message = body.message;
-  if (
-    typeof message !== "string" ||
-    message.trim().length < 1 ||
-    message.length > 5000
-  ) {
-    return json(request, env, { error: "Bad Request" }, 400);
-  }
-
-  if (env.SANDBOX_KV) {
-    const id = `contact:${Date.now()}`;
-    await env.SANDBOX_KV.put(
-      id,
-      JSON.stringify({
-        email: body.email.trim(),
-        message: message.trim(),
-        source: SANDBOX.source,
-        at: new Date().toISOString(),
-      }),
-      { expirationTtl: 60 * 60 * 24 * 30 }
-    );
-  }
-
-  return json(request, env, { ok: true, source: SANDBOX.source });
 }
 
 async function handleAdminWipe(request: Request, env: Env): Promise<Response> {
@@ -203,15 +160,23 @@ export default {
     if (request.method === "GET" && path === "/api/health") {
       return handleHealth(request, env);
     }
+
+    // Contact: rate limit + Turnstile (src/contact-handler.ts)
     if (request.method === "POST" && path === "/api/contact") {
-      return handleContact(request, env);
+      return handleContactSecure(request, env as any);
     }
+
     if (request.method === "POST" && path === "/api/admin/wipe") {
       return handleAdminWipe(request, env);
     }
 
     if (path.startsWith("/api/")) {
-      return json(request, env, { error: "Not Found", source: SANDBOX.source }, 404);
+      return json(
+        request,
+        env,
+        { error: "Not Found", source: SANDBOX.source },
+        404
+      );
     }
 
     return json(request, env, {

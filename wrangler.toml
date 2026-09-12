@@ -2,14 +2,20 @@ name = "apex-sandbox-api"
 main = "src/index.ts"
 compatibility_date = "2026-09-01"
 
-# Create KV in dashboard, then set id:
+# KV namespaces (create in dashboard, then set ids):
 # wrangler kv namespace create SANDBOX_KV
+# wrangler kv namespace create RATE_LIMIT_KV
 [[kv_namespaces]]
 binding = "SANDBOX_KV"
 id = "REPLACE_WITH_KV_NAMESPACE_ID"
 
-# Secret (do not commit):
+[[kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "REPLACE_WITH_RATE_LIMIT_KV_ID"
+
+# Secrets (do not commit):
 # wrangler secret put ADMIN_TOKEN
+# wrangler secret put TURNSTILE_SECRET_KEY
 
 [vars]
-ALLOWED_ORIGINS = "https://apexcapitalweb.com,http://localhost:8787,http://127.0.0.1:8787"
+ALLOWED_ORIGINS = "https://apexcapitalweb.com,https://apex-capital-web.pages.dev,http://localhost:8787,http://127.0.0.1:8787,http://localhost:8080"
